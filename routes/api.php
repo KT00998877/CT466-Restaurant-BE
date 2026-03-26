@@ -14,6 +14,9 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\TableController;
 use App\Http\Controllers\Api\KitchenController;
+use App\Http\Controllers\Api\IngredientController;
+use App\Http\Controllers\Api\ChatbotController;
+use App\Http\Controllers\Api\ReportController;
 
 // ── Auth ────────────────────────────────────────────────
 Route::post('/register', [AuthController::class, 'register']);
@@ -25,6 +28,7 @@ Route::get('/contacts', [ContactController::class, 'index']);
 Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me',      [AuthController::class, 'me']);
+    
 });
 
 // ── Menu ────────────────────────────────────────────────
@@ -49,6 +53,12 @@ Route::middleware('auth:sanctum')->prefix('waiter')->group(function () {
     Route::get('/tables/{id}', [TableController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/orders/active/{tableId}', [OrderController::class, 'getActiveOrder']);
+    Route::post('/checkout', [CheckoutController::class, 'checkoutTable']);
+    Route::put('/order-items/{id}/serve', [OrderController::class, 'markItemAsServed']);
+    Route::post('/tables/cancel', [OrderController::class, 'cancelTable']);
+    Route::get('/notifications/ready-count', [OrderController::class, 'getReadyCount']);
+    Route::get('/items/ready', [OrderController::class, 'getReadyItems']);
+    Route::get('/orders/today', [OrderController::class, 'getTodayOrders']);
 });
 
 
@@ -71,6 +81,7 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     Route::delete('/menu-items/{id}', [MenuController::class, 'destroy']);
     Route::post('/menu-items', [MenuController::class, 'store']);
     Route::get('/orders', [OrderController::class, 'adminIndex']);
+    Route::post('/orders', [OrderController::class, 'adminStore']);
     Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
     Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
     Route::get('/reservations', [ReservationController::class, 'adminIndex']);
@@ -80,6 +91,14 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
     Route::post('/users', [UserController::class, 'store']);
 
+    Route::get('/ingredients/low-stock', [IngredientController::class, 'getLowStock']);
+    Route::apiResource('/ingredients', IngredientController::class);
+    // Chỉnh sửa số lượng (nhập/xuất)
+    Route::post('/ingredients/{id}/transaction', [IngredientController::class, 'handleTransaction']);
+
+    // Xem lịch sử nhập/xuất của nguyên liệu
+    Route::get('/ingredients/{id}/transactions', [IngredientController::class, 'getTransactions']);
+    Route::get('/reports/revenue', [ReportController::class, 'getRevenue']);
 });
 
 Route::middleware('auth:sanctum')->prefix('cart')->group(function () {
@@ -93,10 +112,14 @@ Route::middleware('auth:sanctum')->prefix('cart')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'placeOrder']);
-
     Route::get('/orders', [OrderController::class, 'index']);
     Route::post('/payment/vnpay', [PaymentController::class, 'createPayment']);
     Route::get('/payment/vnpay-return', [PaymentController::class, 'vnpayReturn']);
     Route::get('/payment/vnpay-ipn', [PaymentController::class, 'vnpayIPN']);
+    Route::get('/profile', [UserController::class, 'profile']);
+    Route::put('/profile', [UserController::class, 'updateProfile']);
+    Route::post('profile/avatar',    [UserController::class, 'updateAvatar']);    
+    Route::put('profile/password',  [UserController::class, 'changePassword']); 
 });
 
+Route::post('/chatbot', [ChatbotController::class, 'handleChat']);
