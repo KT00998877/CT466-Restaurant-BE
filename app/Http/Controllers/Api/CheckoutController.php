@@ -8,6 +8,7 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
+use App\Models\TableList;
 
 class CheckoutController extends Controller
 {
@@ -80,6 +81,61 @@ class CheckoutController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Có lỗi xảy ra khi đặt hàng: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // HÀM MỚI DÀNH CHO WAITER THANH TOÁN TẠI BÀN
+    public function checkoutTable(Request $request)
+    {
+        // 1. Chỉ validate những thứ Waiter gửi lên
+        $request->validate([
+            'table_id' => 'required|exists:table_lists,id',
+            'amount' => 'required|numeric',
+            'payment_method' => 'required|string',
+            'note' => 'nullable|string'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // 2. Tìm Hóa đơn đang ăn của Bàn này 
+            $order = Order::where('table_id', $request->table_id)
+                ->whereIn('status', ['serving']) 
+                ->first();
+
+            if (!$order) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bàn này không có hóa đơn nào cần thanh toán!'
+                ], 404);
+            }
+
+            // 3. Cập nhật hóa đơn thành Đã thanh toán
+            $order->update([
+                'status' => 'completed', // Đã hoàn thành
+                'payment_status' => 'paid', // Đã trả tiền
+                'payment_method' => $request->payment_method,
+                'total_price' => $request->amount,
+                'notes' => $request->note ? ($order->notes . ' | Thu ngân: ' . $request->note) : $order->notes
+            ]);
+
+            // 4. Quan trọng nhất: Đổi trạng thái bàn thành "Trống"
+            $table = TableList::find($request->table_id);
+            $table->status = 'available';
+            $table->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Thanh toán thành công! Đã dọn bàn.'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi thanh toán bàn: ' . $e->getMessage()
             ], 500);
         }
     }
