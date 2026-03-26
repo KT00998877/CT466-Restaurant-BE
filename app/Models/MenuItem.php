@@ -38,6 +38,14 @@ class MenuItem extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
+    public function ingredients()
+    {
+        return $this->belongsToMany(Ingredient::class, 'ingredient_menu_item')
+            ->using(IngredientMenuItem::class) // Chỉ định dùng Pivot Model
+            ->withPivot('quantity_required')   // Lấy kèm số lượng cần thiết
+            ->withTimestamps();
+    }
+
     public function getStatusLabelAttribute()
     {
         return match ($this->status) {

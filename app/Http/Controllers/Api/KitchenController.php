@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\OrderItem;
+use Illuminate\Support\Facades\DB;
 
 class KitchenController extends Controller
 {
@@ -26,7 +27,7 @@ class KitchenController extends Controller
         $items = OrderItem::with('order.table')
             ->whereIn('status', ['ready', 'served'])
             ->orderBy('updated_at', 'desc') // Món mới xong lên đầu
-            ->limit(50) // Giới hạn 50 món gần nhất cho nhẹ web
+            ->limit(50) // Giới hạn 50 món gần nhất 
             ->get();
 
         return response()->json(['success' => true, 'data' => $items]);
@@ -39,13 +40,48 @@ class KitchenController extends Controller
             'status' => 'required|in:pending,cooking,ready,served,cancelled'
         ]);
 
-        $item = OrderItem::find($id);
+        // Eager load luôn menuItem và ingredients để tối ưu truy vấn
+        $item = OrderItem::with('menuItem.ingredients')->find($id);
+
         if (!$item) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy món ăn'], 404);
         }
 
-        $item->status = $request->status;
-        $item->save();
+        // Logic trừ tồn kho: Chỉ trừ khi trạng thái MỚI là 'ready' 
+        // và trạng thái CŨ chưa phải là 'ready' hoặc 'served' (tránh trừ đúp 2 lần)
+        if ($request->status === 'ready' && !in_array($item->status, ['ready', 'served'])) {
+            DB::beginTransaction();
+            try {
+                // 1. Duyệt qua công thức món ăn để trừ nguyên liệu
+                if ($item->menuItem && $item->menuItem->ingredients) {
+                    foreach ($item->menuItem->ingredients as $ingredient) {
+                        // Công thức tính: Định mức 1 món * Số lượng khách gọi
+                        // Giả định bảng order_items của bạn có cột 'quantity'
+                        $totalDeduct = $ingredient->pivot->quantity_required * $item->quantity;
+
+                        // Trừ tồn kho (Có thể thêm logic kiểm tra kho âm ở đây nếu cần)
+                        $ingredient->stock_quantity -= $totalDeduct;
+                        $ingredient->save();
+                    }
+                }
+
+                // 2. Cập nhật trạng thái món
+                $item->status = $request->status;
+                $item->save();
+
+                DB::commit(); // Xác nhận lưu toàn bộ thay đổi
+            } catch (\Exception $e) {
+                DB::rollBack(); // Hủy bỏ thao tác nếu có lỗi
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lỗi trừ tồn kho: ' . $e->getMessage()
+                ], 500);
+            }
+        } else {
+            // Nếu là các trạng thái khác (pending, cooking, cancelled), chỉ cập nhật bình thường
+            $item->status = $request->status;
+            $item->save();
+        }
 
         return response()->json([
             'success' => true,
