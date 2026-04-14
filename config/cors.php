@@ -3,7 +3,7 @@
 return [
     'paths' => ['api/*'],
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['http://localhost:5173', 'https://ct-466-restaurant-jrztstb2x-kt00998877s-projects.vercel.app'],
+    'allowed_origins' => ['http://localhost:5173', 'ct-466-restaurant-fe.vercel.app'],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
     'exposed_headers' => [],
