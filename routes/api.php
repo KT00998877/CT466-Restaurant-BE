@@ -117,7 +117,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/history',                [KitchenController::class, 'getHistoryItems']);
         Route::get('/menu-items',               [MenuController::class, 'getMenuItems']);
         Route::get('/ingredients/low-stock',         [IngredientController::class, 'getLowStock']);
-        Route::apiResource('/ingredients',           IngredientController::class);
+        Route::apiResource('/ingredients', IngredientController::class)->names([
+            'index'   => 'kitchen.ingredients.index',
+            'store'   => 'kitchen.ingredients.store',
+            'show'    => 'kitchen.ingredients.show',
+            'update'  => 'kitchen.ingredients.update',
+            'destroy' => 'kitchen.ingredients.destroy',
+        ]);
         Route::patch('/items/{id}/status',    [KitchenController::class, 'updateItemStatus']);
         Route::get('/items/{id}/ingredients', [KitchenController::class, 'getItemIngredients']);
     });
@@ -158,7 +164,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Quản lý Kho & Nguyên liệu
         Route::get('/ingredients/low-stock',         [IngredientController::class, 'getLowStock']);
-        Route::apiResource('/ingredients',           IngredientController::class);
+        Route::apiResource('/ingredients', IngredientController::class)->names([
+            'index'   => 'admin.ingredients.index',
+            'store'   => 'admin.ingredients.store',
+            'show'    => 'admin.ingredients.show',
+            'update'  => 'admin.ingredients.update',
+            'destroy' => 'admin.ingredients.destroy',
+        ]);
         Route::post('/ingredients/{id}/transaction', [IngredientController::class, 'handleTransaction']); // Nhập/xuất
         Route::get('/ingredients/{id}/transactions', [IngredientController::class, 'getTransactions']);   // Lịch sử
 
