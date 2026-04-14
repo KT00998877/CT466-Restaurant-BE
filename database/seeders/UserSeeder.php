@@ -13,7 +13,15 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Tài khoản Admin (Quản trị viên)
+        // Xóa data cũ trước để tránh trùng
+        User::whereIn('email', [
+            'admin@gmail.com',
+            'cashier@gmail.com',
+            'waiter@gmail.com',
+            'kitchen@gmail.com',
+            'customer@gmail.com',
+        ])->delete();
+
         User::create([
             'name'     => 'Quản Trị Viên',
             'email'    => 'admin@gmail.com',
@@ -22,25 +30,22 @@ class UserSeeder extends Seeder
             'phone'    => '0901111111',
         ]);
 
-        // 2. Tài khoản Cashier (Thu ngân)
         User::create([
-            'name'     => 'Thu Ngân ',
+            'name'     => 'Thu Ngân',
             'email'    => 'cashier@gmail.com',
             'password' => Hash::make('123456'),
             'role'     => 'cashier',
             'phone'    => '0902222222',
         ]);
 
-        // 3. Tài khoản Waiter (Phục vụ)
         User::create([
-            'name'     => 'Phục Vụ ',
+            'name'     => 'Phục Vụ',
             'email'    => 'waiter@gmail.com',
             'password' => Hash::make('123456'),
             'role'     => 'waiter',
             'phone'    => '0903333333',
         ]);
 
-        //4 Tai khoản kitchen (Bếp)
         User::create([
             'name'     => 'Bếp',
             'email'    => 'kitchen@gmail.com',
@@ -49,8 +54,6 @@ class UserSeeder extends Seeder
             'phone'    => '0905555555',
         ]);
 
-
-        // 5. Tài khoản Customer (Khách hàng)
         User::create([
             'name'     => 'Khách Hang',
             'email'    => 'customer@gmail.com',
