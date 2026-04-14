@@ -36,51 +36,72 @@ class KitchenController extends Controller
     public function updateItemStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:pending,cooking,ready,served,cancelled'
+            'status' => 'required|in:pending,cooking,ready,served,cancelled',
+            'used_ingredients' => 'nullable|array', // Hứng mảng nguyên liệu từ giao diện Vue
+            'used_ingredients.*.ingredient_id' => 'required|integer',
+            'used_ingredients.*.quantity' => 'required|numeric|min:0'
         ]);
 
-        // Eager load luôn menuItem và ingredients để tối ưu truy vấn
+        // Eager load để tối ưu truy vấn
         $item = OrderItem::with('menuItem.ingredients')->find($id);
 
         if (!$item) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy món ăn'], 404);
         }
 
-        // Logic trừ tồn kho: Chỉ trừ khi trạng thái MỚI là 'ready' 
-        // và trạng thái CŨ chưa phải là 'ready' hoặc 'served' (tránh trừ đúp 2 lần)
-        if ($request->status === 'ready' && !in_array($item->status, ['ready', 'served'])) {
+        $oldStatus = $item->status;
+        $newStatus = $request->status;
+
+        // LOGIC TRỪ TỒN KHO: Khi bếp bấm "Xác nhận nấu" (chuyển sang cooking)
+        // Và tránh trừ đúp nếu món đã ở trạng thái cooking/ready từ trước
+        if ($newStatus === 'cooking' && !in_array($oldStatus, ['cooking', 'ready', 'served'])) {
             DB::beginTransaction();
             try {
-                // 1. Duyệt qua công thức món ăn để trừ nguyên liệu
-                if ($item->menuItem && $item->menuItem->ingredients) {
-                    foreach ($item->menuItem->ingredients as $ingredient) {
-                        // Công thức tính: Định mức 1 món * Số lượng khách gọi
-                        // Giả định bảng order_items của bạn có cột 'quantity'
-                        $totalDeduct = $ingredient->pivot->quantity_required * $item->quantity;
-
-                        // Trừ tồn kho (Có thể thêm logic kiểm tra kho âm ở đây nếu cần)
-                        $ingredient->stock_quantity -= $totalDeduct;
-                        $ingredient->save();
+                // Trường hợp 1: Có dữ liệu nguyên liệu thực tế từ giao diện Bếp gửi lên
+                if ($request->has('used_ingredients') && !empty($request->used_ingredients)) {
+                    foreach ($request->used_ingredients as $ing) {
+                        DB::table('ingredients')
+                            ->where('id', $ing['ingredient_id'])
+                            ->decrement('stock_quantity', $ing['quantity']);
+                    }
+                }
+                // Trường hợp 2: Fallback (Nếu request không gửi mảng nguyên liệu, tự trừ theo công thức gốc)
+                else {
+                    if ($item->menuItem && $item->menuItem->ingredients) {
+                        foreach ($item->menuItem->ingredients as $ingredient) {
+                            $totalDeduct = $ingredient->pivot->quantity_required * $item->quantity;
+                            $ingredient->stock_quantity -= $totalDeduct;
+                            $ingredient->save();
+                        }
                     }
                 }
 
-                // 2. Cập nhật trạng thái món
-                $item->status = $request->status;
+                // Cập nhật trạng thái
+                $item->status = $newStatus;
                 $item->save();
 
-                DB::commit(); // Xác nhận lưu toàn bộ thay đổi
+                DB::commit();
+                return response()->json(['success' => true, 'message' => 'Bắt đầu nấu và đã trừ kho!']);
             } catch (\Exception $e) {
-                DB::rollBack(); // Hủy bỏ thao tác nếu có lỗi
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Lỗi trừ tồn kho: ' . $e->getMessage()
                 ], 500);
             }
-        } else {
-            // Nếu là các trạng thái khác (pending, cooking, cancelled), chỉ cập nhật bình thường
-            $item->status = $request->status;
-            $item->save();
         }
+
+        // NẾU BẾP HỦY MÓN
+        if ($newStatus === 'cancelled') {
+            // Ghi nhận lý do hủy (nếu bảng có cột cancel_reason)
+            if ($request->has('cancel_reason')) {
+                // $item->cancel_reason = $request->cancel_reason;
+            }
+        }
+
+        // CÁC TRẠNG THÁI BÌNH THƯỜNG KHÁC (ready, served, cancelled...)
+        $item->status = $newStatus;
+        $item->save();
 
         return response()->json([
             'success' => true,

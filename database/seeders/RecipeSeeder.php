@@ -104,6 +104,55 @@ class RecipeSeeder extends Seeder
                 'Gạo dẻo Nhật Bản' => 0.2,
                 'Bột Matcha' => 0.02,
             ],
+            
+            'Bánh xèo Nhật Bản (Okonomiyaki)' => [
+                'Bột mì/Bột bánh xèo' => 0.1,
+                'Bắp cải' => 0.15,
+                'Bạch tuộc' => 0.05,
+            ],
+            'Há cảo Hàn Quốc hấp (Mandu)' => [
+                'Vỏ bánh Mandu' => 0.2, // 20% gói hoặc 1 gói tùy quy ước
+                'Thịt ba chỉ heo' => 0.1,
+            ],
+            'Canh kim chi đậu hũ sườn non' => [
+                'Kim chi cải thảo' => 0.1,
+                'Đậu hũ non' => 1,
+                'Sườn non heo' => 0.15,
+            ],
+            'Mì tương đen (Jajangmyeon)' => [
+                'Mì Ramen' => 0.15,
+                'Thịt ba chỉ heo' => 0.05,
+                'Sốt tương đen' => 0.05,
+            ],
+            'Rượu Soju vị nho' => [
+                'Rượu Soju vị nho' => 1,
+            ],
+            'Rượu gạo Hàn Quốc (Makgeolli)' => [
+                'Rượu gạo Makgeolli' => 1,
+            ],
+            'Rượu Sake Nhật Bản (Bình 150ml)' => [
+                'Rượu Sake' => 0.2, // Giả sử chai lớn 750ml, lấy 150ml ~ 0.2 chai
+            ],
+            'Nước ép mơ ngâm Choya' => [
+                'Nước mơ Choya' => 0.1, // Lấy một phần để pha nước ép
+            ],
+            'Bánh Mochi nhân kem trà xanh' => [
+                'Bột nếp làm Mochi' => 0.05,
+                'Bột Matcha' => 0.005,
+            ],
+            'Bingsu đậu đỏ hạt nướng' => [
+                'Sữa tươi (làm Bingsu)' => 0.3,
+                'Đậu đỏ sên đường' => 0.05,
+            ],
+            'Kem cá vị Vani' => [
+                'Kem cá đóng gói' => 1,
+            ],
+            'Combo Gà Rán Khổng Lồ & Bia' => [
+                'Cánh gà' => 0.4,
+                'Bánh gạo (Tteok)' => 0.15,
+                'Sốt Gochujang' => 0.05,
+                'Nước mơ Choya' => 0.2,
+            ],
         ];
 
         // 4. Tiến hành Insert vào database

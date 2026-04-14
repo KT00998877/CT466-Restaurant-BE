@@ -127,8 +127,8 @@ class OrderController extends Controller
         ]);
 
         try {
-            // 2. Tìm Hóa đơn (Order) thay vì OrderItem
-            $order = Order::find($id);
+            // 2. Tìm Hóa đơn kèm theo danh sách các món ăn (items)
+            $order = Order::with('items')->find($id);
 
             if (!$order) {
                 return response()->json(['success' => false, 'message' => 'Không tìm thấy hóa đơn!'], 404);
@@ -136,6 +136,24 @@ class OrderController extends Controller
 
             $oldStatus = $order->status;
             $newStatus = $request->status;
+
+            // ==========================================
+            // ---  KIỂM TRA MÓN ĂN KHI HOÀN THÀNH ĐƠN ---
+            // ==========================================
+            if ($newStatus === 'completed') {
+                // Kiểm tra xem có món nào đang ở trạng thái 'pending' (chờ làm) hoặc 'cooking' (đang nấu) không
+                $hasUnfinishedItems = $order->items->contains(function ($item) {
+                    return in_array($item->status, ['pending', 'cooking']);
+                });
+
+                if ($hasUnfinishedItems) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Không thể hoàn thành đơn! Tất cả các món phải được chế biến xong.'
+                    ], 400); // Trả về lỗi 400 Bad Request
+                }
+            }
+            // ==========================================
 
             // Cập nhật trạng thái mới
             $order->status = $newStatus;

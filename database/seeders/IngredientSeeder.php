@@ -32,6 +32,20 @@ class IngredientSeeder extends Seeder
             ['name' => 'Sốt Gochujang', 'unit' => 'kg', 'price' => 90000, 'stock_quantity' => 5.0, 'reorder_level' => 1],
             ['name' => 'Rượu Soju truyền thống', 'unit' => 'chai', 'price' => 45000, 'stock_quantity' => 100, 'reorder_level' => 20],
             ['name' => 'Bột Matcha', 'unit' => 'kg', 'price' => 400000, 'stock_quantity' => 2.0, 'reorder_level' => 0.5],
+            ['name' => 'Bột mì/Bột bánh xèo', 'unit' => 'kg', 'price' => 45000, 'stock_quantity' => 10.0, 'reorder_level' => 2],
+            ['name' => 'Bắp cải', 'unit' => 'kg', 'price' => 20000, 'stock_quantity' => 20.0, 'reorder_level' => 5],
+            ['name' => 'Vỏ bánh Mandu', 'unit' => 'gói', 'price' => 30000, 'stock_quantity' => 20, 'reorder_level' => 5],
+            ['name' => 'Đậu hũ non', 'unit' => 'khối', 'price' => 10000, 'stock_quantity' => 30, 'reorder_level' => 10],
+            ['name' => 'Sườn non heo', 'unit' => 'kg', 'price' => 160000, 'stock_quantity' => 10.0, 'reorder_level' => 3],
+            ['name' => 'Sốt tương đen', 'unit' => 'kg', 'price' => 110000, 'stock_quantity' => 5.0, 'reorder_level' => 1],
+            ['name' => 'Rượu Soju vị nho', 'unit' => 'chai', 'price' => 48000, 'stock_quantity' => 50, 'reorder_level' => 10],
+            ['name' => 'Rượu gạo Makgeolli', 'unit' => 'chai', 'price' => 65000, 'stock_quantity' => 40, 'reorder_level' => 10],
+            ['name' => 'Rượu Sake', 'unit' => 'chai', 'price' => 450000, 'stock_quantity' => 10, 'reorder_level' => 2],
+            ['name' => 'Nước mơ Choya', 'unit' => 'chai', 'price' => 350000, 'stock_quantity' => 15, 'reorder_level' => 3],
+            ['name' => 'Bột nếp làm Mochi', 'unit' => 'kg', 'price' => 55000, 'stock_quantity' => 5.0, 'reorder_level' => 1],
+            ['name' => 'Đậu đỏ sên đường', 'unit' => 'kg', 'price' => 85000, 'stock_quantity' => 5.0, 'reorder_level' => 1],
+            ['name' => 'Kem cá đóng gói', 'unit' => 'cái', 'price' => 18000, 'stock_quantity' => 30, 'reorder_level' => 5],
+            ['name' => 'Sữa tươi (làm Bingsu)', 'unit' => 'lít', 'price' => 30000, 'stock_quantity' => 20.0, 'reorder_level' => 5],
         ];
 
         // ĐÃ SỬA: Dùng updateOrInsert thay vì insert
