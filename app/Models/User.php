@@ -6,6 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+
 class User extends Authenticatable
 {
     use HasApiTokens, Notifiable;
@@ -51,5 +52,21 @@ class User extends Authenticatable
 
         // Trả về URL public (storage:link phải được chạy trước)
         return asset('storage/' . $this->avatar);
+    }
+
+    // Tính hạng thành viên dựa trên điểm tích lũy
+    public function getMemberTierAttribute(): string
+    {
+        return match (true) {
+            $this->points >= 1000 => 'Vàng',
+            $this->points >= 500  => 'Bạc',
+            default               => 'Đồng',
+        };
+    }
+
+    // Quan hệ: một user có nhiều giao dịch điểm
+    public function pointTransactions()
+    {
+        return $this->hasMany(PointTransaction::class);
     }
 }

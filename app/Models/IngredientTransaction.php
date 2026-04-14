@@ -13,6 +13,8 @@ class IngredientTransaction extends Model
         'user_id',
         'type',
         'quantity',
+        'unit_price',   
+        'total_price',  
         'stock_after',
         'note',
     ];

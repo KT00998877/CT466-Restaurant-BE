@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
 class Order extends Model
 {
     use HasFactory;
@@ -26,5 +27,11 @@ class Order extends Model
     public function table()
     {
         return $this->belongsTo(TableList::class, 'table_id');
+    }
+
+    // Một hóa đơn có thể sinh ra nhiều giao dịch điểm
+    public function pointTransactions()
+    {
+        return $this->hasMany(PointTransaction::class);
     }
 }

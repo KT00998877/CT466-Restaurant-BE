@@ -15,12 +15,14 @@ class Ingredient extends Model
     protected $fillable = [
         'name',
         'unit',
+        'price',           // ---> BỔ SUNG CỘT GIÁ Ở ĐÂY
         'stock_quantity',
         'reorder_level',
     ];
 
-    
+
     protected $casts = [
+        'price' => 'integer',  // ---> ÉP KIỂU SỐ NGUYÊN CHO GIÁ
         'stock_quantity' => 'float',
         'reorder_level' => 'float',
     ];
@@ -29,8 +31,8 @@ class Ingredient extends Model
     public function menuItems()
     {
         return $this->belongsToMany(MenuItem::class, 'ingredient_menu_item')
-            ->using(IngredientMenuItem::class) // Sử dụng Pivot Model (nếu có)
-            ->withPivot('quantity_required')   // Lấy thêm cột định lượng
+            ->using(IngredientMenuItem::class) 
+            ->withPivot('quantity_required')  
             ->withTimestamps();
     }
 }

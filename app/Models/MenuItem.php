@@ -18,16 +18,21 @@ class MenuItem extends Model
         'img_url',
         'is_combo',
         'status',
+        'is_featured',        //   Món đặc sắc
+        'is_daily_special',   //   Món ngon mỗi ngày
     ];
 
     const STATUS_INACTIVE = 0;      // Ngừng bán
     const STATUS_ACTIVE = 1;        // Đang bán
     const STATUS_OUT_OF_STOCK = 2;  // Tạm hết hàng
 
+        // Định nghĩa kiểu dữ liệu cho các trường
     protected $casts = [
         'is_combo' => 'boolean', 
         'price' => 'integer',  
         'status' => 'integer',
+        'is_featured' => 'boolean',       
+        'is_daily_special' => 'boolean',  
     ];
 
     /**
