@@ -166,11 +166,32 @@ class ReservationController extends Controller
      */
     public function updateStatus(Request $request, Reservation $reservation): JsonResponse
     {
+        // 1. Thêm trạng thái 'seated' vào validate
         $request->validate([
-            'status' => ['required', 'in:pending,confirmed,cancelled,completed'],
+            'status' => ['required', 'in:pending,confirmed,seated,completed,cancelled'],
         ]);
 
-        $reservation->update(['status' => $request->status]);
+        $oldStatus = $reservation->status;
+        $newStatus = $request->status;
+
+        // 2. Cập nhật trạng thái đặt bàn
+        $reservation->update(['status' => $newStatus]);
+
+        // 3. ĐỒNG BỘ TRẠNG THÁI BÀN THỰC TẾ (TableList)
+        $table = $reservation->table()->first();
+
+        if ($table) {
+            // Khách đến nhận bàn -> Chuyển bàn thành ĐANG SỬ DỤNG
+            if ($newStatus === 'seated') {
+                $table->update(['status' => 'occupied']); // Phục vụ sẽ không mở bàn này được nữa
+            }
+            // Khách ăn xong (completed) hoặc Hủy bàn (cancelled) -> Trả lại BÀN TRỐNG
+            elseif (in_array($newStatus, ['completed', 'cancelled'])) {
+                // Chỉ trả về available nếu bàn đang ở trạng thái in_use hoặc unavailable do chính cái reservation này gây ra
+                // (Thực tế phức tạp hơn có thể set thành 'cleaning' để chờ dọc dẹp xong mới available)
+                $table->update(['status' => 'available']);
+            }
+        }
 
         return response()->json([
             'message'     => 'Cập nhật trạng thái thành công.',

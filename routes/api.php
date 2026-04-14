@@ -34,6 +34,8 @@ Route::middleware('auth:sanctum')->prefix('auth')->group(function () {
 // ── Menu ────────────────────────────────────────────────
 Route::get('/menu',       [MenuController::class, 'index']);
 Route::get('/menu-items', [MenuController::class, 'getMenuItems']);
+Route::get('/menu/featured', [MenuController::class, 'getFeaturedItems']);
+Route::get('/menu/daily-specials', [MenuController::class, 'getDailySpecialItems']);
 
 // ── Đặt bàn ─────────────────────────────────────────────
 // Public: xem danh sách bàn (truyền ?reserved_at=... để lọc)
@@ -59,6 +61,7 @@ Route::middleware('auth:sanctum')->prefix('waiter')->group(function () {
     Route::get('/notifications/ready-count', [OrderController::class, 'getReadyCount']);
     Route::get('/items/ready', [OrderController::class, 'getReadyItems']);
     Route::get('/orders/today', [OrderController::class, 'getTodayOrders']);
+    Route::get('/customers/search', [UserController::class, 'searchByPhone']);
 });
 
 
@@ -67,6 +70,7 @@ Route::middleware('auth:sanctum')->prefix('kitchen')->group(function () {
     Route::get('/pending', [KitchenController::class, 'getPendingItems']);
     Route::get('/history', [KitchenController::class, 'getHistoryItems']);
     Route::patch('/items/{id}/status', [KitchenController::class, 'updateItemStatus']);
+    Route::get('/items/{id}/ingredients', [KitchenController::class, 'getItemIngredients']);
 });
 
 
@@ -99,6 +103,13 @@ Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
     // Xem lịch sử nhập/xuất của nguyên liệu
     Route::get('/ingredients/{id}/transactions', [IngredientController::class, 'getTransactions']);
     Route::get('/reports/revenue', [ReportController::class, 'getRevenue']);
+    Route::patch('/orders/{id}/payment-status', [OrderController::class, 'updatePaymentStatus']);
+    Route::patch('/menu/{id}/highlights', [MenuController::class, 'toggleHighlights']);
+    Route::get('/reports/inventory', [ReportController::class, 'getInventoryReport']);
+
+    Route::get('/contacts', [ContactController::class, 'indexAdmin']);
+    Route::patch('/contacts/{id}/status', [ContactController::class, 'updateStatus']);
+    Route::delete('/contacts/{id}', [ContactController::class, 'destroy']);
 });
 
 Route::middleware('auth:sanctum')->prefix('cart')->group(function () {
@@ -118,8 +129,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payment/vnpay-ipn', [PaymentController::class, 'vnpayIPN']);
     Route::get('/profile', [UserController::class, 'profile']);
     Route::put('/profile', [UserController::class, 'updateProfile']);
-    Route::post('profile/avatar',    [UserController::class, 'updateAvatar']);    
-    Route::put('profile/password',  [UserController::class, 'changePassword']); 
+    Route::post('/profile/avatar',    [UserController::class, 'updateAvatar']);    
+    Route::put('/profile/password',  [UserController::class, 'changePassword']);
+    Route::get('/profile/point-history',    [UserController::class, 'pointHistory']);
+   
 });
 
 Route::post('/chatbot', [ChatbotController::class, 'handleChat']);
