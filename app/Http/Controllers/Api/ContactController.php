@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 class ContactController extends Controller
 {
+    // API dành cho khách hàng gửi liên hệ
     public function index()
     {
         return response()->json([
@@ -14,7 +15,7 @@ class ContactController extends Controller
             'message' => 'Trang liên hệ'
         ]);
     }
-
+    // 1. Khách hàng gửi liên hệ
     public function store(Request $request)
     {
         $validated = $request->validate([

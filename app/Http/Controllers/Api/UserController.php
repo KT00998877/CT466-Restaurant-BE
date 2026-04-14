@@ -24,7 +24,7 @@ class UserController extends Controller
             'data' => $users
         ]);
     }
-
+    // 1. Thêm người dùng mới
     public function store(Request $request)
     {
         $request->validate([
@@ -49,7 +49,7 @@ class UserController extends Controller
             'data'    => $user
         ]);
     }
-
+    // 2. Cập nhật thông tin người dùng (Không cập nhật mật khẩu ở đây, có API riêng để đổi mật khẩu)
     public function update(Request $request, $id)
     {
         $user = User::find($id);
@@ -74,6 +74,8 @@ class UserController extends Controller
         ]);
     }
 
+    // 3. Xóa người dùng
+    
     public function destroy(Request $request, $id)
     {
         $user = User::find($id);

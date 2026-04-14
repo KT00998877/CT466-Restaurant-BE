@@ -19,7 +19,7 @@ class MenuController extends Controller
         ]);
     }
 
-    // Cập nhật thông tin món ăn (Đã thêm validate cho is_featured và is_daily_special)
+    // 1. Cập nhật thông tin món ăn (Đã thêm validate cho is_featured và is_daily_special)
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -46,7 +46,7 @@ class MenuController extends Controller
         ]);
     }
 
-    // Xóa món ăn
+    // 2. Xóa món ăn
     public function destroy($id)
     {
         $menuItem = MenuItem::find($id);
@@ -63,6 +63,7 @@ class MenuController extends Controller
         ]);
     }
 
+    // 3. Lấy danh sách món ăn
     public function getMenuItems()
     {
         $menuItems = MenuItem::with('category:id,name')
@@ -75,7 +76,7 @@ class MenuController extends Controller
         ]);
     }
 
-    // Cập nhật trạng thái kinh doanh
+    // 4. Cập nhật trạng thái kinh doanh
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
@@ -98,7 +99,7 @@ class MenuController extends Controller
         ]);
     }
 
-    // Hàm tạo mới món ăn (Đã thêm validate cho 2 cờ nổi bật)
+    // 5. Tạo mới món ăn (Đã thêm validate cho 2 cờ nổi bật)
     public function store(Request $request)
     {
         $request->validate([
@@ -135,9 +136,10 @@ class MenuController extends Controller
     // =========================================================================
 
     /**
-     * Dành cho API Admin: Cập nhật nhanh cờ "Món đặc sắc" hoặc "Món ngon mỗi ngày"
+   
      * Thích hợp cho các nút Toggle Switch trên bảng quản trị
      */
+    // 6. Cập nhật nhanh cờ "Món đặc sắc" hoặc "Món ngon mỗi ngày"
     public function toggleHighlights(Request $request, $id)
     {
         $request->validate([

@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-
+    // 1. Tạo link thanh toán VNPAY
     public function createPayment(Request $request)
     {
         $vnp_Url = env('VNP_URL');
@@ -64,7 +64,7 @@ class PaymentController extends Controller
 
         return response()->json(['url' => $vnp_Url]);
     }
-
+    //2. Xử lý IPN từ VNPAY
     public function vnpayIPN(Request $request)
     {
         $inputData = $request->all();
@@ -116,7 +116,7 @@ class PaymentController extends Controller
             return response()->json(['RspCode' => '97', 'Message' => 'Invalid signature']);
         }
     }
-
+        // 3. Xử lý trả về từ VNPAY sau khi khách thanh toán
     public function vnpayReturn(Request $request)
     {
         $vnp_SecureHash = $request->vnp_SecureHash;

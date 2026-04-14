@@ -199,7 +199,7 @@ class ReservationController extends Controller
         ]);
     }
 
-
+    //  API kiểm tra xem bàn có khả dụng tại thời điểm khách chọn hay không (Dành cho frontend gọi trước khi khách gửi đặt bàn)
     public function checkAvailability(Request $request)
     {
         $tableId = $request->table_id;

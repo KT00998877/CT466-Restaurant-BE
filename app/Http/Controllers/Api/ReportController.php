@@ -11,6 +11,8 @@ use App\Http\Controllers\Controller;
 
 class ReportController extends Controller
 {
+        
+    // 1. Báo cáo doanh thu
     public function getRevenue(Request $request)
     {
         $request->validate([

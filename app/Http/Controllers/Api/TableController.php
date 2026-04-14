@@ -50,6 +50,8 @@ class TableController extends Controller
             'tables'  => $formattedTables
         ]);
     }
+    // 4. Lấy thông tin chi tiết của một bàn cụ thể (Có thể dùng cho trang quản lý bàn hoặc popup chi tiết)
+
     public function show($id)
     {
         $table = TableList::find($id);

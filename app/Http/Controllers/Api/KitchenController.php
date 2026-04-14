@@ -89,7 +89,7 @@ class KitchenController extends Controller
         ]);
     }
 
-    // Lấy nguyên liệu cần dùng cho 1 order item cụ thể
+    // 4. Lấy danh sách nguyên liệu cần chuẩn bị cho món đang nấu
     public function getItemIngredients($id)
     {
         $item = OrderItem::with('menuItem.ingredients')->find($id);
