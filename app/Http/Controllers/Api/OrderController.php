@@ -9,10 +9,11 @@ use App\Models\OrderItem;
 use App\Models\TableList;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use App\Models\User; 
+use App\Models\PointTransaction; 
 
 class OrderController extends Controller
-{
+{ 
     public function index(Request $request)
     {
         // Lấy tất cả hoá đơn của user đang đăng nhập, kèm theo chi tiết món ăn (items)
@@ -35,8 +36,8 @@ class OrderController extends Controller
     // Lấy toàn bộ danh sách hóa đơn
     public function adminIndex()
     {
-        // Chỉ cần load chi tiết món ăn. Thông tin khách đã có sẵn trong bảng orders.
-        $orders = Order::with(['items.menuItem:id,name,price,img_url'])
+        // Lấy tất cả hoá đơn, kèm theo chi tiết món ăn (items) và thông tin bàn (table)
+        $orders = Order::with(['items.menuItem:id,name,price,img_url', 'table'])
             ->latest()
             ->get();
 
@@ -46,42 +47,66 @@ class OrderController extends Controller
         ]);
     }
 
-    // Tạo hóa đơn mới trực tiếp (Dành cho Admin)
+    // Tạo hóa đơn mới trực tiếp kèm món ăn (Dành cho Admin/Quản lý)
     public function adminStore(Request $request)
     {
-        // 1. Validate dữ liệu khớp chính xác với biến newOrderData trên Vue của bạn
+        // 1. Validate dữ liệu hóa đơn VÀ danh sách món ăn
         $request->validate([
             'customer_name'  => 'required|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
             'total_price'    => 'required|numeric|min:0',
+            'discount_amount' => 'nullable|numeric|min:0',
             'payment_method' => 'required|in:cod,banking,vnpay,momo',
             'payment_status' => 'required|in:paid,unpaid',
             'status'         => 'required|string',
             'notes'          => 'nullable|string',
+
+            // Validate mảng món ăn gửi lên
+            'items'            => 'required|array|min:1',
+            'items.*.id'       => 'required|exists:menu_items,id',
+            'items.*.name'     => 'required|string',
+            'items.*.price'    => 'required|numeric|min:0',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.note'     => 'nullable|string'
         ]);
 
         try {
             DB::beginTransaction();
 
-            // 2. Tạo hóa đơn (Không cần table_id vì đây là khách vãng lai/mua mang đi)
+            // 2. Tạo Hóa đơn (Order)
             $order = Order::create([
-                'user_id'          => $request->user()->id ?? null, // Lưu ID của Admin/Cashier tạo đơn
+                'user_id'          => $request->user()->id ?? null,
                 'customer_name'    => $request->customer_name,
                 'customer_phone'   => $request->customer_phone,
                 'total_price'      => $request->total_price,
+                'discount_amount'  => $request->discount_amount ?? 0,
                 'payment_method'   => $request->payment_method,
                 'payment_status'   => $request->payment_status,
                 'status'           => $request->status,
                 'notes'            => $request->notes,
+                'table_id'         => null // Bắt buộc null vì đây là đơn mang đi
             ]);
 
+            // 3. Lưu danh sách món ăn vào bảng OrderItem (Gửi xuống bếp)
+            foreach ($request->items as $item) {
+                OrderItem::create([
+                    'order_id'     => $order->id,
+                    'menu_item_id' => $item['id'],
+                    'item_name'    => $item['name'],
+                    'price'        => $item['price'],
+                    'quantity'     => $item['quantity'],
+                    'subtotal'     => $item['price'] * $item['quantity'],
+                    'note'         => $item['note'] ?? null,
+                    'status'       => 'pending' // Trạng thái bếp: Chờ nấu
+                ]);
+            }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Tạo hóa đơn tại quầy thành công!',
-                'data'    => $order
+                'message' => 'Tạo hóa đơn tại quầy và gửi bếp thành công!',
+                'data'    => $order->load('items') // Trả về order kèm theo các items vừa tạo
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -95,33 +120,138 @@ class OrderController extends Controller
     // Cập nhật trạng thái hóa đơn
     public function updateStatus(Request $request, $id)
     {
+        // 1. Cập nhật các trạng thái chuẩn của HÓA ĐƠN (Order)
         $request->validate([
-            'status' => 'required|in:pending,cooking,ready,served,cancelled',
-            'cancel_reason' => 'nullable|string' // Nhận lý do hủy từ Vue gửi lên
+            'status' => 'required|in:pending,processing,completed,delivering,cancelled',
+            'cancel_reason' => 'nullable|string'
         ]);
 
         try {
-            $orderItem = OrderItem::find($id);
-            if (!$orderItem) {
-                return response()->json(['success' => false, 'message' => 'Không tìm thấy món ăn!'], 404);
+            // 2. Tìm Hóa đơn (Order) thay vì OrderItem
+            $order = Order::find($id);
+
+            if (!$order) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy hóa đơn!'], 404);
             }
+
+            $oldStatus = $order->status;
+            $newStatus = $request->status;
 
             // Cập nhật trạng thái mới
-            $orderItem->status = $request->status;
+            $order->status = $newStatus;
 
-            // NẾU BẾP BẤM HỦY: Ghi thẳng lý do vào cột 'note'
-            if ($request->status === 'cancelled' && $request->filled('cancel_reason')) {
-                // Kiểm tra xem món đó khách có ghi chú gì từ trước không (ví dụ: "ít cay")
-                // Nếu có thì giữ lại, nối thêm chữ "BẾP HỦY:..." vào đuôi.
-                $oldNote = $orderItem->note ? $orderItem->note . ' | ' : '';
-                $orderItem->note = $oldNote . 'BẾP HỦY: ' . $request->cancel_reason;
+            // NẾU ADMIN BẤM HỦY: Ghi lý do vào cột 'notes' của hóa đơn
+            if ($newStatus === 'cancelled' && $request->filled('cancel_reason')) {
+                $oldNote = $order->notes ? $order->notes . ' | ' : '';
+                $order->notes = $oldNote . 'ADMIN HỦY: ' . $request->cancel_reason;
             }
 
-            $orderItem->save();
+            // ==========================================
+            // LOGIC TÍCH ĐIỂM (KHI ĐƠN HÀNG HOÀN THÀNH)
+            // ==========================================
+            if ($oldStatus !== 'completed' && $newStatus === 'completed') {
+                // Tính số điểm (Ví dụ: 10,000 VNĐ = 1 điểm)
+                $pointsToEarn = floor($order->total_price / 10000);
+
+                // Lưu số điểm đơn này mang lại vào database
+                $order->points_earned = $pointsToEarn;
+
+                // Tìm khách hàng (theo user_id nếu mua online, hoặc phone nếu mua tại quầy)
+                $customer = null;
+                if ($order->user_id && $order->user_id !== $request->user()->id) {
+                    // Loại trừ trường hợp admin tự tạo đơn cho chính mình
+                    $customer = User::find($order->user_id);
+                } elseif ($order->customer_phone) {
+                    $customer = User::where('phone', $order->customer_phone)
+                        ->where('role', 'customer')
+                        ->first();
+                }
+
+                // Cộng điểm cho khách
+                if ($customer) {
+                    $customer->points += $pointsToEarn;
+                    $customer->save();
+
+                    // Ghi lại giao dịch tích điểm vào bảng point_transactions
+                    PointTransaction::create([
+                        'user_id' => $customer->id,
+                        'order_id' => $order->id,
+                        'points' => $pointsToEarn,
+                        'type' => 'earn', // Loại giao dịch: Tích điểm
+                        'note' => 'Tích điểm từ đơn hàng #' . $order->id
+                    ]);
+                }
+            }
+
+            // ==========================================
+            // LOGIC TRỪ ĐIỂM (KHI LỠ BẤM "HOÀN THÀNH" SAU ĐÓ ĐỔI THÀNH "HỦY")
+            // ==========================================
+            if ($oldStatus === 'completed' && $newStatus === 'cancelled') {
+                if ($order->points_earned > 0) {
+                    $customer = null;
+                    if ($order->user_id && $order->user_id !== $request->user()->id) {
+                        $customer = User::find($order->user_id);
+                    } elseif ($order->customer_phone) {
+                        $customer = User::where('phone', $order->customer_phone)
+                            ->where('role', 'customer')
+                            ->first();
+                    }
+
+                    // Trừ điểm (chỉ trừ nếu khách còn đủ điểm)
+                    if ($customer && $customer->points >= $order->points_earned) {
+                        $customer->points -= $order->points_earned;
+                        $customer->save();
+
+                        // Ghi lại giao dịch trừ điểm vào bảng point_transactions
+                        PointTransaction::create([
+                            'user_id' => $customer->id,
+                            'order_id' => $order->id,
+                            'points' => $order->points_earned,
+                            'type' => 'deduct', // Loại giao dịch: Trừ điểm
+                            'note' => 'Thu hồi điểm do hủy đơn hàng #' . $order->id
+                        ]);
+                    }
+
+                    // Thu hồi điểm của hóa đơn này
+                    $order->points_earned = 0;
+                }
+            }
+
+            $order->save();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Cập nhật trạng thái thành công!'
+                'message' => 'Cập nhật trạng thái hóa đơn thành công!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi server: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Cập nhật trạng thái thanh toán (cho admin)
+    public function updatePaymentStatus(Request $request, $id)
+    {
+        $request->validate([
+            'payment_status' => 'required|in:paid,unpaid'
+        ]);
+
+        try {
+            $order = Order::find($id);
+
+            if (!$order) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy hóa đơn!'], 404);
+            }
+
+            // Cập nhật trạng thái
+            $order->payment_status = $request->payment_status;
+            $order->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật trạng thái thanh toán thành công!'
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -374,7 +504,12 @@ class OrderController extends Controller
     // 1. Đếm số món đã nấu xong (Cho Badge thông báo chuông đỏ)
     public function getReadyCount()
     {
-        $count = OrderItem::where('status', 'ready')->count();
+        // Đếm các món 'ready' NHƯNG đơn hàng (order) phải có table_id (khách ngồi tại bàn)
+        $count = OrderItem::where('status', 'ready')
+            ->whereHas('order', function ($query) {
+                $query->whereNotNull('table_id');
+            })
+            ->count();
 
         return response()->json([
             'success' => true,

@@ -39,4 +39,49 @@ class ContactController extends Controller
             'data'    => $contact,
         ], 201);
     }
+
+    // ==========================================
+    // CÁC API DÀNH CHO ADMIN QUẢN LÝ
+    // ==========================================
+
+    // 2. Lấy danh sách liên hệ
+    public function indexAdmin(Request $request)
+    {
+        // Sắp xếp tin nhắn mới nhất lên đầu, hỗ trợ phân trang
+        $contacts = Contact::orderBy('created_at', 'desc')->paginate(10);
+
+        return response()->json([
+            'success' => true,
+            'data' => $contacts
+        ]);
+    }
+
+    // 3. Cập nhật trạng thái (Đã đọc / Đã phản hồi)
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:new,read,replied'
+        ]);
+
+        $contact = Contact::findOrFail($id);
+        $contact->status = $request->status;
+        $contact->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật trạng thái thành công'
+        ]);
+    }
+
+    // 4. Xóa tin nhắn liên hệ
+    public function destroy($id)
+    {
+        $contact = Contact::findOrFail($id);
+        $contact->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã xóa liên hệ'
+        ]);
+    }
 }

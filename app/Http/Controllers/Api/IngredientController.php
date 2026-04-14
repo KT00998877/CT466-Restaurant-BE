@@ -121,11 +121,13 @@ class IngredientController extends Controller
     }
 
     // 7. Xử lý Nhập / Xuất kho
+    // 7. Xử lý Nhập / Xuất kho
     public function handleTransaction(Request $request, $id)
     {
         $request->validate([
             'type' => 'required|in:import,export',
             'quantity' => 'required|numeric|min:0.01',
+            'price' => 'nullable|numeric|min:0', // ---> BỔ SUNG: Cho phép truyền giá mới khi nhập hàng
             'note' => 'nullable|string'
         ]);
 
@@ -147,21 +149,33 @@ class IngredientController extends Controller
                 ], 400);
             }
 
+            // ---> XỬ LÝ LỘ TRÌNH GIÁ TIỀN
+            // Lấy giá từ request (nếu có), không thì lấy giá mặc định của nguyên liệu
+            $unitPrice = $request->price ?? $ingredient->price;
+            $totalPrice = $unitPrice * $request->quantity;
+
             // Tính toán số lượng mới
             if ($request->type === 'import') {
                 $ingredient->stock_quantity += $request->quantity;
+
+                // NẾU LÀ NHẬP HÀNG: Cập nhật luôn giá mới nhất làm giá tham khảo cho nguyên liệu
+                if ($request->has('price')) {
+                    $ingredient->price = $unitPrice;
+                }
             } else {
                 $ingredient->stock_quantity -= $request->quantity;
             }
 
             $ingredient->save();
 
-            // Ghi lại lịch sử giao dịch
+            // Ghi lại lịch sử giao dịch (ĐÃ BỔ SUNG CỘT TIỀN)
             $transaction = IngredientTransaction::create([
                 'ingredient_id' => $ingredient->id,
-                'user_id' => $request->user()->id ?? null, // Nếu có dùng auth
+                'user_id' => $request->user()->id ?? null,
                 'type' => $request->type,
                 'quantity' => $request->quantity,
+                'unit_price' => $unitPrice,       
+                'total_price' => $totalPrice,     
                 'stock_after' => $ingredient->stock_quantity,
                 'note' => $request->note
             ]);

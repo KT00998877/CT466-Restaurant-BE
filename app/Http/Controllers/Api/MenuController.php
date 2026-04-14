@@ -11,7 +11,6 @@ class MenuController extends Controller
 {
     public function index()
     {
-        
         $categories = Category::with('menuItems')->get();
 
         return response()->json([
@@ -20,13 +19,15 @@ class MenuController extends Controller
         ]);
     }
 
-    // Cập nhật thông tin món ăn
+    // Cập nhật thông tin món ăn (Đã thêm validate cho is_featured và is_daily_special)
     public function update(Request $request, $id)
     {
         $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
+            'is_featured' => 'nullable|boolean',       // Thêm validate
+            'is_daily_special' => 'nullable|boolean',  // Thêm validate
             // Có thể thêm validate cho description, img_url nếu cần
         ]);
 
@@ -64,7 +65,6 @@ class MenuController extends Controller
 
     public function getMenuItems()
     {
-        // Lấy thêm status, price, category_id. Lấy kèm tên danh mục (nếu bạn đã định nghĩa relationship 'category' trong Model MenuItem)
         $menuItems = MenuItem::with('category:id,name')
             ->orderBy('id', 'desc')
             ->get();
@@ -75,11 +75,9 @@ class MenuController extends Controller
         ]);
     }
 
-    
-    // 2. Thêm hàm mới: Cập nhật trạng thái
+    // Cập nhật trạng thái kinh doanh
     public function updateStatus(Request $request, $id)
     {
-        // Validate dữ liệu gửi lên (chỉ cho phép 0, 1, 2)
         $request->validate([
             'status' => 'required|integer|in:0,1,2'
         ]);
@@ -100,29 +98,29 @@ class MenuController extends Controller
         ]);
     }
 
+    // Hàm tạo mới món ăn (Đã thêm validate cho 2 cờ nổi bật)
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048' // Validate file ảnh
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'is_featured' => 'nullable|boolean',
+            'is_daily_special' => 'nullable|boolean',
         ]);
 
-        // Lấy toàn bộ dữ liệu request
         $data = $request->all();
 
-        // Xử lý lưu ảnh nếu có
         if ($request->hasFile('image')) {
-            // Lưu file vào thư mục 'menu_images' trong ổ đĩa 'public'
-            // Hàm store() sẽ tự động tạo tên file ngẫu nhiên và trả về đường dẫn: "menu_images/ten-file.jpg"
             $path = $request->file('image')->store('menu_images', 'public');
-
-            // Gán đường dẫn này vào cột img_url
             $data['img_url'] = $path;
         }
 
-        // Tạo món ăn mới
+        // Đảm bảo giá trị mặc định nếu không truyền lên
+        $data['is_featured'] = $request->is_featured ?? false;
+        $data['is_daily_special'] = $request->is_daily_special ?? false;
+
         $menuItem = MenuItem::create($data);
 
         return response()->json([
@@ -131,5 +129,77 @@ class MenuController extends Controller
             'data' => $menuItem
         ]);
     }
-    
+
+    // =========================================================================
+    // CÁC HÀM MỚI BỔ SUNG
+    // =========================================================================
+
+    /**
+     * Dành cho API Admin: Cập nhật nhanh cờ "Món đặc sắc" hoặc "Món ngon mỗi ngày"
+     * Thích hợp cho các nút Toggle Switch trên bảng quản trị
+     */
+    public function toggleHighlights(Request $request, $id)
+    {
+        $request->validate([
+            'is_featured' => 'nullable|boolean',
+            'is_daily_special' => 'nullable|boolean',
+        ]);
+
+        $menuItem = MenuItem::find($id);
+
+        if (!$menuItem) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy món ăn'], 404);
+        }
+
+        // Chỉ cập nhật trường nào được gửi lên
+        if ($request->has('is_featured')) {
+            $menuItem->is_featured = $request->is_featured;
+        }
+
+        if ($request->has('is_daily_special')) {
+            $menuItem->is_daily_special = $request->is_daily_special;
+        }
+
+        $menuItem->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật nhãn món ăn thành công!',
+            'data' => $menuItem
+        ]);
+    }
+
+    /**
+     * Dành cho API Client: Lấy danh sách Món đặc sắc đang bán
+     */
+    public function getFeaturedItems()
+    {
+        $items = MenuItem::with('category:id,name')
+            ->where('is_featured', 1)
+            ->where('status', MenuItem::STATUS_ACTIVE) // Đảm bảo món đang còn bán
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $items
+        ]);
+    }
+
+    /**
+     * Dành cho API Client: Lấy danh sách Món ngon mỗi ngày đang bán
+     */
+    public function getDailySpecialItems()
+    {
+        $items = MenuItem::with('category:id,name')
+            ->where('is_daily_special', 1)
+            ->where('status', MenuItem::STATUS_ACTIVE) // Đảm bảo món đang còn bán
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $items
+        ]);
+    }
 }

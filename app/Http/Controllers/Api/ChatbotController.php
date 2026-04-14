@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Http\Controllers\Api;
-
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\MenuItem;
@@ -68,21 +67,20 @@ class ChatbotController extends Controller
                         ['parts' => [['text' => $systemPrompt]]]
                     ]
                 ]);
-
                 // 4. Lọc lấy câu trả lời text từ API trả về
                 $responseBody = $response->json();
 
                 if (isset($responseBody['error'])) {
                     // GHI LOG ẨN: Lưu lỗi vào backend để Dev biết
-                    Log::error('Gemini API Error: ' . $responseBody['error']['message']);
 
+                    Log::error('Gemini API Error: ' . $responseBody['error']['message']);
                     // HIỂN THỊ CHO KHÁCH: Câu xin lỗi lịch sự
+
                     $aiText = "Xin lỗi bạn, trợ lý AI hiện đang hơi quá tải. Bạn vui lòng tham khảo Menu qua các nút bấm bên dưới nhé!";
                 } else {
                     // Lấy câu trả lời thành công, nếu kẹt định dạng thì trả về câu mặc định
                     $aiText = data_get($responseBody, 'candidates.0.content.parts.0.text', "Xin lỗi, tôi chưa hiểu rõ ý bạn. Bạn có thể nói rõ hơn hoặc chọn Menu bên dưới nhé.");
                 }
-
                 return response()->json([
                     'reply_type' => 'text',
                     'message' => $aiText,
@@ -90,6 +88,7 @@ class ChatbotController extends Controller
                 ]);
             } catch (\Exception $e) {
                 // GHI LOG ẨN: Lưu lỗi đứt mạng/sập server vào backend
+                
                 Log::error('Chatbot Exception: ' . $e->getMessage());
 
                 // HIỂN THỊ CHO KHÁCH: Câu xin lỗi chung chung

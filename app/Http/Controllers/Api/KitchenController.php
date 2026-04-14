@@ -17,7 +17,6 @@ class KitchenController extends Controller
             ->whereIn('status', ['pending', 'cooking'])
             ->orderBy('created_at', 'asc') // Ưu tiên món gọi trước (cũ nhất) lên đầu
             ->get();
-
         return response()->json(['success' => true, 'data' => $items]);
     }
 
@@ -87,6 +86,38 @@ class KitchenController extends Controller
             'success' => true,
             'message' => 'Đã cập nhật trạng thái!',
             'data' => $item
+        ]);
+    }
+
+    // Lấy nguyên liệu cần dùng cho 1 order item cụ thể
+    public function getItemIngredients($id)
+    {
+        $item = OrderItem::with('menuItem.ingredients')->find($id);
+
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy món'], 404);
+        }
+
+        $ingredients = [];
+        if ($item->menuItem && $item->menuItem->ingredients) {
+            foreach ($item->menuItem->ingredients as $ingredient) {
+                $ingredients[] = [
+                    'id'                => $ingredient->id,
+                    'name'              => $ingredient->name,
+                    'unit'              => $ingredient->unit,
+                    'stock_quantity'    => $ingredient->stock_quantity,
+                    'quantity_required' => $ingredient->pivot->quantity_required * $item->quantity,
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'item_name'   => $item->item_name,
+                'quantity'    => $item->quantity,
+                'ingredients' => $ingredients,
+            ]
         ]);
     }
 }

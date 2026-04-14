@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use  App\Models\PointTransaction;
 
 class UserController extends Controller
 {
@@ -30,7 +31,7 @@ class UserController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|unique:users',
             'password' => 'required|string|min:6',
-            'role'     => 'required|in:admin,customer,cashier,waiter',
+            'role'     => 'required|in:admin,user,cashier,waiter',
             'phone'    => 'nullable|string|max:20',
         ]);
 
@@ -60,7 +61,7 @@ class UserController extends Controller
         $request->validate([
             'name'  => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
-            'role'  => 'required|in:admin,customer,cashier,waiter',
+            'role'  => 'required|in:admin,user,cashier,waiter',
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -209,6 +210,47 @@ class UserController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Đổi mật khẩu thành công!',
+        ]);
+    }
+
+    // Lay thong tin khach hang theo so dien thoai (dung cho Waiter khi checkout)
+    public function searchByPhone(Request $request)
+    {
+        $phone = $request->query('phone');
+
+        if (!$phone) {
+            return response()->json(['success' => false, 'message' => 'Vui lòng cung cấp số điện thoại']);
+        }
+
+        // Tìm khách hàng theo sđt và role
+        $customer = User::where('phone', $phone)->where('role', 'user')->first();
+
+        if ($customer) {
+            return response()->json([
+                'success' => true,
+                'customer' => [ 
+                    'id' => $customer->id, 
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'points' => $customer->points
+                ]
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Không tìm thấy khách hàng']);
+    }
+
+    //Lấy lịch sử tích điểm của user đang đăng nhập
+    public function pointHistory(Request $request)
+    {
+        // Lấy danh sách lịch sử của user đang đăng nhập, sắp xếp mới nhất lên đầu
+        $history = PointTransaction::where('user_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $history
         ]);
     }
 }
