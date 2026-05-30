@@ -1,22 +1,13 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
-Route::get('/api/test', function () {
-    return response()->json([
-        'status' => 'ok',
-        'message' => 'Backend connected'
-    ]);
-});
-
-// Route tạm thời để cập nhật categories cho ingredients
-Route::get('/update-ingredient-categories', function () {
-    try {
+return new class
+{
+    public function updateCategories()
+    {
+        // Danh sách nguyên liệu và nhóm của chúng
         $ingredientCategories = [
             // Thịt & Hải sản (Meat & Seafood)
             'Cá hồi tươi' => 'meat_seafood',
@@ -58,29 +49,15 @@ Route::get('/update-ingredient-categories', function () {
             'Bột nếp làm Mochi' => 'dessert',
             'Đậu đỏ sên đường' => 'dessert',
             'Kem cá đóng gói' => 'dessert',
-            'Sữa tươi (làm Bingsu)' => 'dessert',
+            'Sữa tươi' => 'dessert',
         ];
 
-        $updated = 0;
         foreach ($ingredientCategories as $name => $category) {
-            $result = DB::table('ingredients')
+            DB::table('ingredients')
                 ->where('name', $name)
                 ->update(['category' => $category]);
-            
-            if ($result > 0) {
-                $updated += $result;
-            }
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => "✅ Đã cập nhật $updated nguyên liệu với categories.",
-            'data' => $ingredientCategories
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Lỗi: ' . $e->getMessage()
-        ], 500);
+        return count($ingredientCategories) . ' nguyên liệu đã được cập nhật category.';
     }
-});
+};

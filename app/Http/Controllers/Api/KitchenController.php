@@ -57,6 +57,8 @@ class KitchenController extends Controller
         if ($newStatus === 'cooking' && !in_array($oldStatus, ['cooking', 'ready', 'served'])) {
             DB::beginTransaction();
             try {
+                $usedIngredients = [];
+
                 // Trường hợp 1: Có dữ liệu nguyên liệu thực tế từ giao diện Bếp gửi lên
                 if ($request->has('used_ingredients') && !empty($request->used_ingredients)) {
                     foreach ($request->used_ingredients as $ing) {
@@ -82,6 +84,14 @@ class KitchenController extends Controller
                         DB::table('ingredients')
                             ->where('id', $ing['ingredient_id'])
                             ->decrement('stock_quantity', $ing['quantity']);
+
+                        // Lưu nguyên liệu đã dùng để hoàn tác sau
+                        $usedIngredients[] = [
+                            'ingredient_id' => $ing['ingredient_id'],
+                            'ingredient_name' => $ingredient->name,
+                            'quantity' => $ing['quantity'],
+                            'unit' => $ingredient->unit
+                        ];
                     }
                 }
                 // Trường hợp 2: Fallback (Nếu request không gửi mảng nguyên liệu, tự trừ theo công thức gốc)
@@ -101,12 +111,21 @@ class KitchenController extends Controller
 
                             $ingredient->stock_quantity -= $totalDeduct;
                             $ingredient->save();
+
+                            // Lưu nguyên liệu đã dùng để hoàn tác sau
+                            $usedIngredients[] = [
+                                'ingredient_id' => $ingredient->id,
+                                'ingredient_name' => $ingredient->name,
+                                'quantity' => $totalDeduct,
+                                'unit' => $ingredient->unit
+                            ];
                         }
                     }
                 }
 
-                // Cập nhật trạng thái
+                // Cập nhật trạng thái và lưu dữ liệu nguyên liệu đã dùng
                 $item->status = $newStatus;
+                $item->used_ingredients = $usedIngredients;
                 $item->save();
 
                 DB::commit();
@@ -116,6 +135,35 @@ class KitchenController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Lỗi trừ tồn kho: ' . $e->getMessage()
+                ], 500);
+            }
+        }
+
+        // ✅ HOÀN TÁC: Chuyển từ cooking → pending (hoàn lại kho)
+        if ($newStatus === 'pending' && $oldStatus === 'cooking') {
+            DB::beginTransaction();
+            try {
+                // Hoàn lại kho từ dữ liệu đã lưu
+                if ($item->used_ingredients && is_array($item->used_ingredients)) {
+                    foreach ($item->used_ingredients as $usedIng) {
+                        DB::table('ingredients')
+                            ->where('id', $usedIng['ingredient_id'])
+                            ->increment('stock_quantity', $usedIng['quantity']);
+                    }
+                }
+
+                // Xóa dữ liệu nguyên liệu đã dùng
+                $item->status = $newStatus;
+                $item->used_ingredients = null;
+                $item->save();
+
+                DB::commit();
+                return response()->json(['success' => true, 'message' => 'Đã hoàn tác và hoàn lại kho!']);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Lỗi hoàn tác: ' . $e->getMessage()
                 ], 500);
             }
         }

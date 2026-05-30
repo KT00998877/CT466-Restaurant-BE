@@ -46,6 +46,7 @@ class IngredientController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:ingredients,name',
+            'category' => 'nullable|string|max:100',
             'unit' => 'required|string|max:50',
             'stock_quantity' => 'numeric|min:0',
             'reorder_level' => 'numeric|min:0',
@@ -87,6 +88,7 @@ class IngredientController extends Controller
         $validated = $request->validate([
             // Bỏ qua check unique cho chính ID hiện tại
             'name' => 'sometimes|required|string|max:255|unique:ingredients,name,' . $id,
+            'category' => 'sometimes|nullable|string|max:100',
             'unit' => 'sometimes|required|string|max:50',
             'stock_quantity' => 'sometimes|numeric|min:0',
             'reorder_level' => 'sometimes|numeric|min:0',

@@ -12,9 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('ingredient_transactions', function (Blueprint $table) {
-            // Thêm đơn giá và tổng tiền. Dùng decimal để lưu tiền chính xác hơn
-            $table->decimal('unit_price', 15, 2)->default(0)->after('quantity')->comment('Đơn giá tại thời điểm giao dịch');
-            $table->decimal('total_price', 15, 2)->default(0)->after('unit_price')->comment('Tổng tiền = quantity * unit_price');
+            if (!Schema::hasColumn('ingredient_transactions', 'unit_price')) {
+                $table->decimal('unit_price', 15, 2)->default(0)->after('quantity')->comment('Đơn giá tại thời điểm giao dịch');
+            }
+            if (!Schema::hasColumn('ingredient_transactions', 'total_price')) {
+                $table->decimal('total_price', 15, 2)->default(0)->after('unit_price')->comment('Tổng tiền = quantity * unit_price');
+            }
         });
     }
 

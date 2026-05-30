@@ -12,6 +12,18 @@ class Order extends Model
 
     protected $guarded = []; // Cho phép mass assignment tất cả các cột
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            // Sinh mã đơn tự động: ORD + timestamp + random 4 ký tự
+            if (!$model->order_code) {
+                $model->order_code = 'ORD' . date('YmdHis') . strtoupper(substr(uniqid(), -4));
+            }
+        });
+    }
+
     // Một hóa đơn thuộc về một User
     public function user()
     {

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\KitchenController;
 use App\Http\Controllers\Api\IngredientController;
 use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\WarehouseReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -189,6 +190,14 @@ Route::middleware('auth:sanctum')->group(function () {
         ]);
         Route::post('/ingredients/{id}/transaction', [IngredientController::class, 'handleTransaction']);
         Route::get('/ingredients/{id}/transactions', [IngredientController::class, 'getTransactions']);
+
+        // Báo cáo Nhập/Xuất Kho
+        Route::post('/warehouse-reports', [WarehouseReportController::class, 'store']);
+        Route::get('/warehouse-reports', [WarehouseReportController::class, 'index']);
+        Route::get('/warehouse-reports/latest', [WarehouseReportController::class, 'getLatest']);
+        Route::get('/warehouse-reports/{id}', [WarehouseReportController::class, 'show']);
+        Route::put('/warehouse-reports/{id}', [WarehouseReportController::class, 'update']);
+        Route::delete('/warehouse-reports/{id}', [WarehouseReportController::class, 'destroy']);
 
         // Liên hệ
         Route::get('/contacts',               [ContactController::class, 'indexAdmin']);

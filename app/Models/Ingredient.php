@@ -14,6 +14,7 @@ class Ingredient extends Model
     // Các trường được phép thêm/sửa hàng loạt (Mass Assignment)
     protected $fillable = [
         'name',
+        'category',
         'unit',
         'price',           // ---> BỔ SUNG CỘT GIÁ Ở ĐÂY
         'stock_quantity',
