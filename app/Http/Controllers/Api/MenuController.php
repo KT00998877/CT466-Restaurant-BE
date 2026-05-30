@@ -9,6 +9,7 @@ use App\Models\MenuItem;
 
 class MenuController extends Controller
 {
+    // 0. Lấy danh sách món ăn theo từng danh mục (dành cho API Client)
     public function index()
     {
         $categories = Category::with('menuItems')->get();

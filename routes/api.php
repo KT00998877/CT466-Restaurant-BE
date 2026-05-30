@@ -26,7 +26,13 @@ use App\Http\Controllers\Api\ReportController;
 
 // ── Auth ────────────────────────────────────────────────
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/login',    [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'sendResetOtp']);
+Route::post('/forgot-password/verify-otp', [AuthController::class, 'verifyResetOtp']);
+Route::post('/forgot-password/update', [AuthController::class, 'updateNewPassword']);
+
+Route::get('/email/verify', [AuthController::class, 'verifyEmail'])->name('verification.verify');
 
 // ── Menu ────────────────────────────────────────────────
 Route::get('/menu',                 [MenuController::class, 'index']);
@@ -55,6 +61,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('/me',       [AuthController::class, 'me']);
         Route::post('/logout',  [AuthController::class, 'logout']);
+
+        // Xác thực email
+        Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail'])
+            ->middleware('throttle:6,1') // Giới hạn số lần bấm gửi lại (6 lần / 1 phút)
+            ->name('verification.send');
     });
 
     Route::get('/profile',               [UserController::class, 'profile']);
@@ -116,7 +127,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/pending',                [KitchenController::class, 'getPendingItems']);
         Route::get('/history',                [KitchenController::class, 'getHistoryItems']);
         Route::get('/menu-items',               [MenuController::class, 'getMenuItems']);
-        Route::get('/ingredients/low-stock',         [IngredientController::class, 'getLowStock']);
+        Route::get('/ingredients',            [KitchenController::class, 'getAllIngredients']);
+        Route::get('/ingredients/low-stock',  [IngredientController::class, 'getLowStock']);
         Route::apiResource('/ingredients', IngredientController::class)->names([
             'index'   => 'kitchen.ingredients.index',
             'store'   => 'kitchen.ingredients.store',
@@ -129,26 +141,30 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 
-    // ── 2.5. Quản trị viên (Admin) ───────────────────────────────────────────
-       
-        Route::prefix('admin')->middleware(AdminMiddleware::class)->group(function () {
 
-        // Dashboard / Báo cáo
-        Route::get('/reports/revenue',   [ReportController::class, 'getRevenue']);
-        Route::get('/reports/inventory', [ReportController::class, 'getInventoryReport']);
+    // ── 2.5. Admin ───────────────────────────────────────
+    Route::prefix('admin')->middleware(AdminMiddleware::class)->group(function () {
 
-        // Quản lý Đặt bàn
-        Route::get('/reservations',                       [ReservationController::class, 'adminIndex']);
+        // Báo cáo
+        Route::get('/reports/revenue',     [ReportController::class, 'getRevenue']);
+        Route::get('/reports/inventory',   [ReportController::class, 'getInventoryReport']);
+        Route::get('/reports/reservation', [ReportController::class, 'getReservationReport']);
+        Route::get('/reports/menu',        [ReportController::class, 'getMenuReport']);
+        Route::get('/reports/daily',       [ReportController::class, 'getDailySummary']);
+        Route::get('/reports/quick-stats', [ReportController::class, 'getQuickStats']);
+
+        // Đặt bàn
+        Route::get('/reservations',                        [ReservationController::class, 'adminIndex']);
         Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
 
-        // Quản lý Đơn hàng
+        // Đơn hàng
         Route::get('/orders',                       [OrderController::class, 'adminIndex']);
         Route::post('/orders',                      [OrderController::class, 'adminStore']);
         Route::patch('/orders/{id}/status',         [OrderController::class, 'updateStatus']);
         Route::patch('/orders/{id}/payment-status', [OrderController::class, 'updatePaymentStatus']);
         Route::delete('/orders/{id}',               [OrderController::class, 'destroy']);
 
-        // Quản lý Menu (Món ăn)
+        // Menu
         Route::get('/menu-items',               [MenuController::class, 'getMenuItems']);
         Route::post('/menu-items',              [MenuController::class, 'store']);
         Route::put('/menu-items/{id}',          [MenuController::class, 'update']);
@@ -156,14 +172,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/menu-items/{id}/status', [MenuController::class, 'updateStatus']);
         Route::patch('/menu/{id}/highlights',   [MenuController::class, 'toggleHighlights']);
 
-        // Quản lý Người dùng
+        // Người dùng
         Route::get('/users',         [UserController::class, 'index']);
         Route::post('/users',        [UserController::class, 'store']);
         Route::put('/users/{id}',    [UserController::class, 'update']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
 
-        // Quản lý Kho & Nguyên liệu
-        Route::get('/ingredients/low-stock',         [IngredientController::class, 'getLowStock']);
+        // Nguyên liệu / Kho
+        Route::get('/ingredients/low-stock', [IngredientController::class, 'getLowStock']);
         Route::apiResource('/ingredients', IngredientController::class)->names([
             'index'   => 'admin.ingredients.index',
             'store'   => 'admin.ingredients.store',
@@ -171,14 +187,15 @@ Route::middleware('auth:sanctum')->group(function () {
             'update'  => 'admin.ingredients.update',
             'destroy' => 'admin.ingredients.destroy',
         ]);
-        Route::post('/ingredients/{id}/transaction', [IngredientController::class, 'handleTransaction']); // Nhập/xuất
-        Route::get('/ingredients/{id}/transactions', [IngredientController::class, 'getTransactions']);   // Lịch sử
+        Route::post('/ingredients/{id}/transaction', [IngredientController::class, 'handleTransaction']);
+        Route::get('/ingredients/{id}/transactions', [IngredientController::class, 'getTransactions']);
 
-        // Quản lý Liên hệ
+        // Liên hệ
         Route::get('/contacts',               [ContactController::class, 'indexAdmin']);
         Route::patch('/contacts/{id}/status', [ContactController::class, 'updateStatus']);
         Route::delete('/contacts/{id}',       [ContactController::class, 'destroy']);
-    });
+
+    }); 
 
     Route::prefix('cashier')->group(function () {
             // Quản lý Đặt bàn

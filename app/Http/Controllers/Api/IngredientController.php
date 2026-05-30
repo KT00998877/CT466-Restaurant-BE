@@ -121,7 +121,7 @@ class IngredientController extends Controller
     }
 
     // 7. Xử lý Nhập / Xuất kho
-    // 7. Xử lý Nhập / Xuất kho
+   
     public function handleTransaction(Request $request, $id)
     {
         $request->validate([

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail; // <-- THÊM DÒNG NÀY
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail 
 {
     use HasApiTokens, Notifiable;
 
@@ -17,7 +18,7 @@ class User extends Authenticatable
         'password',
         'role',
         'phone',
-        'avatar',      
+        'avatar',
     ];
 
     protected $hidden = [
@@ -25,7 +26,7 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    protected $appends = ['avatar_url']; 
+    protected $appends = ['avatar_url'];
 
     protected function casts(): array
     {

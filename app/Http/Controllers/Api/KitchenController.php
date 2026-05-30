@@ -60,6 +60,25 @@ class KitchenController extends Controller
                 // Trường hợp 1: Có dữ liệu nguyên liệu thực tế từ giao diện Bếp gửi lên
                 if ($request->has('used_ingredients') && !empty($request->used_ingredients)) {
                     foreach ($request->used_ingredients as $ing) {
+                        $ingredient = DB::table('ingredients')->where('id', $ing['ingredient_id'])->first();
+
+                        // Kiểm tra kho có đủ không
+                        if (!$ingredient) {
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Nguyên liệu không tồn tại: #' . $ing['ingredient_id']
+                            ], 400);
+                        }
+
+                        if ($ingredient->stock_quantity < $ing['quantity']) {
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Kho không đủ ' . $ingredient->name . ': cần ' . $ing['quantity'] . ', kho còn ' . $ingredient->stock_quantity
+                            ], 400);
+                        }
+
                         DB::table('ingredients')
                             ->where('id', $ing['ingredient_id'])
                             ->decrement('stock_quantity', $ing['quantity']);
@@ -70,6 +89,16 @@ class KitchenController extends Controller
                     if ($item->menuItem && $item->menuItem->ingredients) {
                         foreach ($item->menuItem->ingredients as $ingredient) {
                             $totalDeduct = $ingredient->pivot->quantity_required * $item->quantity;
+
+                            // Kiểm tra kho có đủ không
+                            if ($ingredient->stock_quantity < $totalDeduct) {
+                                DB::rollBack();
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => 'Kho không đủ: ' . $ingredient->name
+                                ], 400);
+                            }
+
                             $ingredient->stock_quantity -= $totalDeduct;
                             $ingredient->save();
                         }
@@ -110,7 +139,14 @@ class KitchenController extends Controller
         ]);
     }
 
-    // 4. Lấy danh sách nguyên liệu cần chuẩn bị cho món đang nấu
+    // 4. Lấy danh sách tất cả nguyên liệu trong kho (cho Select box)
+    public function getAllIngredients()
+    {
+        $ingredients = DB::table('ingredients')->select('id', 'name', 'unit', 'stock_quantity')->get();
+        return response()->json(['success' => true, 'data' => $ingredients]);
+    }
+
+    // 5. Lấy danh sách nguyên liệu cần chuẩn bị cho món đang nấu
     public function getItemIngredients($id)
     {
         $item = OrderItem::with('menuItem.ingredients')->find($id);

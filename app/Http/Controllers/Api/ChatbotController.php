@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log; // Đừng quên use Log ở đây nhé
 
 class ChatbotController extends Controller
 {
+    // 1. Xử lý yêu cầu từ chatbot (cả button và text)
     public function handleChat(Request $request)
     {
         $request->validate([
