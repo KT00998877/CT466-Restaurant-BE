@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
@@ -22,11 +23,15 @@ class UserSeeder extends Seeder
             'customer@gmail.com',
         ])->delete();
 
+        $roles = Role::whereIn('name', ['admin', 'cashier', 'waiter', 'kitchen', 'user'])
+            ->pluck('id', 'name');
+
         User::create([
             'name'     => 'Quản Trị Viên',
             'email'    => 'admin@gmail.com',
             'password' => Hash::make('123456'),
             'role'     => 'admin',
+            'role_id'  => $roles['admin'] ?? null,
             'phone'    => '0901111111',
         ]);
 
@@ -35,6 +40,7 @@ class UserSeeder extends Seeder
             'email'    => 'cashier@gmail.com',
             'password' => Hash::make('123456'),
             'role'     => 'cashier',
+            'role_id'  => $roles['cashier'] ?? null,
             'phone'    => '0902222222',
         ]);
 
@@ -43,6 +49,7 @@ class UserSeeder extends Seeder
             'email'    => 'waiter@gmail.com',
             'password' => Hash::make('123456'),
             'role'     => 'waiter',
+            'role_id'  => $roles['waiter'] ?? null,
             'phone'    => '0903333333',
         ]);
 
@@ -51,6 +58,7 @@ class UserSeeder extends Seeder
             'email'    => 'kitchen@gmail.com',
             'password' => Hash::make('123456'),
             'role'     => 'kitchen',
+            'role_id'  => $roles['kitchen'] ?? null,
             'phone'    => '0905555555',
         ]);
 
@@ -59,6 +67,7 @@ class UserSeeder extends Seeder
             'email'    => 'customer@gmail.com',
             'password' => Hash::make('123456'),
             'role'     => 'user',
+            'role_id'  => $roles['user'] ?? null,
             'phone'    => '0904444444',
         ]);
     }

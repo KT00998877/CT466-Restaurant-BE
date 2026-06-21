@@ -17,6 +17,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'role',
+        'role_id',
         'phone',
         'avatar',
     ];
@@ -69,5 +70,72 @@ class User extends Authenticatable implements MustVerifyEmail
     public function pointTransactions()
     {
         return $this->hasMany(PointTransaction::class);
+    }
+
+    // ────── PERMISSIONS ──────
+    // Quan hệ: User có nhiều quyền riêng lẻ (assigned by admin)
+    public function userPermissions()
+    {
+        return $this->belongsToMany(Permission::class, 'user_permissions')
+            ->withPivot('granted_by', 'granted_at', 'expired_at', 'reason')
+            ->withTimestamps();
+    }
+
+    public function getRolePermissions()
+    {
+        return Permission::whereHas('roles', function ($query) {
+            $query->where(function ($roleQuery) {
+                if ($this->role_id) {
+                    $roleQuery->where('roles.id', $this->role_id);
+                }
+
+                if ($this->role) {
+                    $roleQuery->orWhere('roles.name', $this->role);
+                }
+            });
+        })->get();
+    }
+
+    // Lấy tất cả permissions: từ role + quyền riêng (chưa hết hạn)
+    public function getAllPermissions()
+    {
+        // Quyền từ role
+        $rolePermissions = $this->getRolePermissions();
+
+        // Quyền riêng lẻ (chưa hết hạn)
+        $userPermissions = $this->userPermissions()
+            ->where(function ($query) {
+                $query->whereNull('expired_at')
+                    ->orWhere('expired_at', '>', now());
+            })
+            ->get();
+
+        return $rolePermissions->merge($userPermissions)->unique('id');
+    }
+
+    // Check user có quyền gì không
+    public function hasPermission($permissionSlug)
+    {
+        return $this->getAllPermissions()->contains('slug', $permissionSlug);
+    }
+
+    // Check user có quyền nào trong danh sách
+    public function hasAnyPermission(array $permissionSlugs)
+    {
+        $permissions = $this->getAllPermissions()->pluck('slug')->toArray();
+        return count(array_intersect($permissions, $permissionSlugs)) > 0;
+    }
+
+    // Check user có tất cả quyền trong danh sách
+    public function hasAllPermissions(array $permissionSlugs)
+    {
+        $permissions = $this->getAllPermissions()->pluck('slug')->toArray();
+        return count(array_intersect($permissions, $permissionSlugs)) === count($permissionSlugs);
+    }
+
+    // Quan hệ: Role (nếu có role_id)
+    public function roleModel()
+    {
+        return $this->belongsTo(Role::class);
     }
 }

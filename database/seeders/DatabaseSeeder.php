@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
    
         // Gọi các seeder bạn muốn chạy ở đây
         $this->call([
+            RoleSeeder::class,
+            PermissionSeeder::class,
             CategorySeeder::class,
             MenuItemSeeder::class,
             TableListSeeder::class,

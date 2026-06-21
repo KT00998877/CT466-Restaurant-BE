@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\User;
+use App\Models\Role;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -52,6 +53,7 @@ class AuthController extends Controller
             'phone'    => $request->phone,
             'password' => Hash::make($request->password), // Mã hóa pass luôn cho an toàn
             'role'     => 'user',
+            'role_id'  => Role::where('name', 'user')->value('id'),
             'otp'      => $otp
         ];
 
@@ -99,6 +101,7 @@ class AuthController extends Controller
             'phone'    => $cachedData['phone'],
             'password' => $cachedData['password'],
             'role'     => $cachedData['role'],
+            'role_id'  => $cachedData['role_id'] ?? Role::where('name', $cachedData['role'])->value('id'),
         ]);
 
         // Đánh dấu đã xác thực email
@@ -151,6 +154,8 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'role'  => $user->role,
+                'role_id' => $user->role_id,
+                'permissions' => $user->getAllPermissions()->pluck('slug'),
             ],
             'token'      => $token,
             'token_type' => 'Bearer',
@@ -181,6 +186,8 @@ class AuthController extends Controller
                 'email' => $request->user()->email,
                 'phone' => $request->user()->phone,
                 'role'  => $request->user()->role,
+                'role_id' => $request->user()->role_id,
+                'permissions' => $request->user()->getAllPermissions()->pluck('slug'),
             ],
         ]);
     }

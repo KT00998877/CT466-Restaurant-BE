@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -31,15 +32,18 @@ class UserController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|unique:users',
             'password' => 'required|string|min:6',
-            'role'     => 'required|in:admin,user,cashier,waiter',
+            'role'     => 'required|in:admin,user,cashier,waiter,kitchen',
             'phone'    => 'nullable|string|max:20',
         ]);
+
+        $roleId = Role::where('name', $request->role)->value('id');
 
         $user = User::create([
             'name'     => $request->name,
             'email'    => $request->email,
             'phone'    => $request->phone,
             'role'     => $request->role,
+            'role_id'  => $roleId,
             'password' => bcrypt($request->password),
         ]);
 
@@ -61,11 +65,17 @@ class UserController extends Controller
         $request->validate([
             'name'  => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
-            'role'  => 'required|in:admin,user,cashier,waiter',
+            'role'  => 'required|in:admin,user,cashier,waiter,kitchen',
             'phone' => 'nullable|string|max:20',
         ]);
 
-        $user->update($request->only(['name', 'email', 'role', 'phone']));
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+            'role_id' => Role::where('name', $request->role)->value('id'),
+            'phone' => $request->phone,
+        ]);
 
         return response()->json([
             'success' => true,

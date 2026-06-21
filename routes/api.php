@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\OrderController;
-use App\Http\Middleware\AdminMiddleware;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\TableController;
@@ -18,6 +17,7 @@ use App\Http\Controllers\Api\IngredientController;
 use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\WarehouseReportController;
+use App\Http\Controllers\Api\PermissionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -144,65 +144,85 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     // ── 2.5. Admin ───────────────────────────────────────
-    Route::prefix('admin')->middleware(AdminMiddleware::class)->group(function () {
+    Route::prefix('admin')->group(function () {
 
         // Báo cáo
-        Route::get('/reports/revenue',     [ReportController::class, 'getRevenue']);
-        Route::get('/reports/inventory',   [ReportController::class, 'getInventoryReport']);
-        Route::get('/reports/reservation', [ReportController::class, 'getReservationReport']);
-        Route::get('/reports/menu',        [ReportController::class, 'getMenuReport']);
-        Route::get('/reports/daily',       [ReportController::class, 'getDailySummary']);
-        Route::get('/reports/quick-stats', [ReportController::class, 'getQuickStats']);
+        Route::get('/reports/revenue',     [ReportController::class, 'getRevenue'])->middleware('permission:reports.view');
+        Route::get('/reports/inventory',   [ReportController::class, 'getInventoryReport'])->middleware('permission:reports.view');
+        Route::get('/reports/reservation', [ReportController::class, 'getReservationReport'])->middleware('permission:reports.view');
+        Route::get('/reports/menu',        [ReportController::class, 'getMenuReport'])->middleware('permission:reports.view');
+        Route::get('/reports/daily',       [ReportController::class, 'getDailySummary'])->middleware('permission:reports.view');
+        Route::get('/reports/quick-stats', [ReportController::class, 'getQuickStats'])->middleware('permission:reports.view');
 
         // Đặt bàn
-        Route::get('/reservations',                        [ReservationController::class, 'adminIndex']);
-        Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus']);
+        Route::get('/reservations',                        [ReservationController::class, 'adminIndex'])->middleware('permission:reservations.manage');
+        Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])->middleware('permission:reservations.manage');
 
         // Đơn hàng
-        Route::get('/orders',                       [OrderController::class, 'adminIndex']);
-        Route::post('/orders',                      [OrderController::class, 'adminStore']);
-        Route::patch('/orders/{id}/status',         [OrderController::class, 'updateStatus']);
-        Route::patch('/orders/{id}/payment-status', [OrderController::class, 'updatePaymentStatus']);
-        Route::delete('/orders/{id}',               [OrderController::class, 'destroy']);
+        Route::get('/orders',                       [OrderController::class, 'adminIndex'])->middleware('permission:orders.manage,orders.create,orders.edit,orders.delete,dishes.manage');
+        Route::post('/orders',                      [OrderController::class, 'adminStore'])->middleware('permission:orders.create');
+        Route::patch('/orders/{id}/status',         [OrderController::class, 'updateStatus'])->middleware('permission:orders.edit,dishes.manage');
+        Route::patch('/orders/{id}/payment-status', [OrderController::class, 'updatePaymentStatus'])->middleware('permission:orders.edit');
+        Route::delete('/orders/{id}',               [OrderController::class, 'destroy'])->middleware('permission:orders.delete');
 
         // Menu
-        Route::get('/menu-items',               [MenuController::class, 'getMenuItems']);
-        Route::post('/menu-items',              [MenuController::class, 'store']);
-        Route::put('/menu-items/{id}',          [MenuController::class, 'update']);
-        Route::delete('/menu-items/{id}',       [MenuController::class, 'destroy']);
-        Route::patch('/menu-items/{id}/status', [MenuController::class, 'updateStatus']);
-        Route::patch('/menu/{id}/highlights',   [MenuController::class, 'toggleHighlights']);
+        Route::get('/menu-items',               [MenuController::class, 'getMenuItems'])->middleware('permission:menu.manage,menu.create,menu.edit,menu.delete');
+        Route::post('/menu-items',              [MenuController::class, 'store'])->middleware('permission:menu.create');
+        Route::put('/menu-items/{id}',          [MenuController::class, 'update'])->middleware('permission:menu.edit');
+        Route::delete('/menu-items/{id}',       [MenuController::class, 'destroy'])->middleware('permission:menu.delete');
+        Route::patch('/menu-items/{id}/status', [MenuController::class, 'updateStatus'])->middleware('permission:menu.edit');
+        Route::patch('/menu/{id}/highlights',   [MenuController::class, 'toggleHighlights'])->middleware('permission:menu.edit');
 
         // Người dùng
-        Route::get('/users',         [UserController::class, 'index']);
-        Route::post('/users',        [UserController::class, 'store']);
-        Route::put('/users/{id}',    [UserController::class, 'update']);
-        Route::delete('/users/{id}', [UserController::class, 'destroy']);
+        Route::get('/users',         [UserController::class, 'index'])->middleware('permission:users.manage,users.create,users.edit,users.delete');
+        Route::post('/users',        [UserController::class, 'store'])->middleware('permission:users.create');
+        Route::put('/users/{id}',    [UserController::class, 'update'])->middleware('permission:users.edit');
+        Route::delete('/users/{id}', [UserController::class, 'destroy'])->middleware('permission:users.delete');
 
         // Nguyên liệu / Kho
-        Route::get('/ingredients/low-stock', [IngredientController::class, 'getLowStock']);
-        Route::apiResource('/ingredients', IngredientController::class)->names([
-            'index'   => 'admin.ingredients.index',
-            'store'   => 'admin.ingredients.store',
-            'show'    => 'admin.ingredients.show',
-            'update'  => 'admin.ingredients.update',
-            'destroy' => 'admin.ingredients.destroy',
-        ]);
-        Route::post('/ingredients/{id}/transaction', [IngredientController::class, 'handleTransaction']);
-        Route::get('/ingredients/{id}/transactions', [IngredientController::class, 'getTransactions']);
+        Route::get('/ingredients/low-stock', [IngredientController::class, 'getLowStock'])->middleware('permission:ingredients.manage,inventory.view,warehouse.operations,warehouse.transaction,warehouse.reports,warehouse-report.create,warehouse-report.save');
+        Route::get('/ingredients', [IngredientController::class, 'index'])
+            ->name('admin.ingredients.index')
+            ->middleware('permission:ingredients.manage,inventory.view,warehouse.operations,warehouse.transaction,warehouse.reports,warehouse-report.create,warehouse-report.save');
+        Route::post('/ingredients', [IngredientController::class, 'store'])
+            ->name('admin.ingredients.store')
+            ->middleware('permission:ingredients.create');
+        Route::get('/ingredients/{ingredient}', [IngredientController::class, 'show'])
+            ->name('admin.ingredients.show')
+            ->middleware('permission:ingredients.manage,inventory.view,warehouse.operations,warehouse.transaction,warehouse.reports,warehouse-report.create,warehouse-report.save');
+        Route::put('/ingredients/{ingredient}', [IngredientController::class, 'update'])
+            ->name('admin.ingredients.update')
+            ->middleware('permission:ingredients.edit');
+        Route::patch('/ingredients/{ingredient}', [IngredientController::class, 'update'])
+            ->middleware('permission:ingredients.edit');
+        Route::delete('/ingredients/{ingredient}', [IngredientController::class, 'destroy'])
+            ->name('admin.ingredients.destroy')
+            ->middleware('permission:ingredients.delete');
+        Route::post('/ingredients/{id}/transaction', [IngredientController::class, 'handleTransaction'])->middleware('permission:warehouse.transaction');
+        Route::get('/ingredients/{id}/transactions', [IngredientController::class, 'getTransactions'])->middleware('permission:warehouse.operations,warehouse.transaction');
 
         // Báo cáo Nhập/Xuất Kho
-        Route::post('/warehouse-reports', [WarehouseReportController::class, 'store']);
-        Route::get('/warehouse-reports', [WarehouseReportController::class, 'index']);
-        Route::get('/warehouse-reports/latest', [WarehouseReportController::class, 'getLatest']);
-        Route::get('/warehouse-reports/{id}', [WarehouseReportController::class, 'show']);
-        Route::put('/warehouse-reports/{id}', [WarehouseReportController::class, 'update']);
-        Route::delete('/warehouse-reports/{id}', [WarehouseReportController::class, 'destroy']);
+        Route::post('/warehouse-reports', [WarehouseReportController::class, 'store'])->middleware('permission:warehouse-report.create,warehouse-report.save');
+        Route::get('/warehouse-reports', [WarehouseReportController::class, 'index'])->middleware('permission:warehouse.reports,warehouse-report.create,warehouse-report.save');
+        Route::get('/warehouse-reports/latest', [WarehouseReportController::class, 'getLatest'])->middleware('permission:warehouse.reports,warehouse-report.create,warehouse-report.save');
+        Route::get('/warehouse-reports/{id}', [WarehouseReportController::class, 'show'])->middleware('permission:warehouse.reports,warehouse-report.create,warehouse-report.save');
+        Route::put('/warehouse-reports/{id}', [WarehouseReportController::class, 'update'])->middleware('permission:warehouse-report.save');
+        Route::delete('/warehouse-reports/{id}', [WarehouseReportController::class, 'destroy'])->middleware('permission:warehouse-report.save');
+
+        // Quản lý Quyền (Permissions)
+        Route::get('/permissions', [PermissionController::class, 'getAllPermissions'])->middleware('permission:permissions.manage,permissions.grant,permissions.revoke');
+        Route::get('/permissions/users', [PermissionController::class, 'getUsersWithPermissions'])->middleware('permission:permissions.manage,permissions.grant,permissions.revoke');
+        Route::get('/permissions/users/{userId}', [PermissionController::class, 'getUserPermissions'])->middleware('permission:permissions.manage,permissions.grant,permissions.revoke');
+        Route::post('/permissions/users/{userId}/grant', [PermissionController::class, 'grantPermission'])->middleware('permission:permissions.grant');
+        Route::delete('/permissions/users/{userId}/revoke/{permissionId}', [PermissionController::class, 'revokePermission'])->middleware('permission:permissions.revoke');
+        Route::get('/permissions/audit-log', [PermissionController::class, 'getAuditLog'])->middleware('permission:permissions.manage,permissions.grant,permissions.revoke');
+        Route::get('/permissions/audit-log/users/{userId}', [PermissionController::class, 'getUserAuditLog'])->middleware('permission:permissions.manage,permissions.grant,permissions.revoke');
+        Route::get('/permissions/check/{userId}/{permissionSlug}', [PermissionController::class, 'checkPermission'])->middleware('permission:permissions.manage,permissions.grant,permissions.revoke');
 
         // Liên hệ
-        Route::get('/contacts',               [ContactController::class, 'indexAdmin']);
-        Route::patch('/contacts/{id}/status', [ContactController::class, 'updateStatus']);
-        Route::delete('/contacts/{id}',       [ContactController::class, 'destroy']);
+        Route::get('/contacts',               [ContactController::class, 'indexAdmin'])->middleware('permission:contacts.manage');
+        Route::patch('/contacts/{id}/status', [ContactController::class, 'updateStatus'])->middleware('permission:contacts.manage');
+        Route::delete('/contacts/{id}',       [ContactController::class, 'destroy'])->middleware('permission:contacts.manage');
 
     }); 
 
