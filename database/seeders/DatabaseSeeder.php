@@ -24,8 +24,9 @@ class DatabaseSeeder extends Seeder
             MenuItemSeeder::class,
             TableListSeeder::class,
             UserSeeder::class,
-            RecipeSeeder::class,
             IngredientSeeder::class,
+            RecipeSeeder::class,
+            
         ]); 
     }
     
